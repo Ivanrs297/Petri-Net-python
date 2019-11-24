@@ -37,7 +37,7 @@ class covert_graph:
                             # Add child to parent
                             current_node.add_tail(current_edge)
                             # Create new parent edge for node
-                            node.add_head(current_node)
+                            node.add_head(current_edge)
                             is_duplicated = True
                             break
 
