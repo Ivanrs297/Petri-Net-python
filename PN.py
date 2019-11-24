@@ -5,9 +5,17 @@ class PN:
     post = None  # The post Matrix
     M = list()  # The list of marks, m[0] = initial mark
     A = None
+    M0 = None
 
-    def set_from_file(self):
-        f = open("data.txt", "r")
+    # LD.n: Add new constructor to use this class from covert_graph
+    # this new parameter is the file name in which is saved the petri net's
+    # initial configuration
+    def __init__(self, file_name):
+        self.set_from_file(file_name)
+
+    def set_from_file(self,file_name):
+        # f = open("data.txt", "r")
+        f = open(file_name, "r")
         data = f.readlines()
         self.M.append(np.mat(data[0]))
         self.pre = np.mat(data[1])
@@ -57,16 +65,16 @@ class PN:
         print("Marcado:", np.transpose(mk))
 
 
-PN = PN()
-PN.set_from_file()
-transitions = PN.get_available_transitions()
-
-while transitions is not None:
-    vector = PN.select_transition(transitions)
-    if vector is not None:
-        print(PN.trigger_transition(vector))
-        del transitions
-        del vector
-        transitions = PN.get_available_transitions()
-    else:
-        transitions = None
+# PN = PN()
+# PN.set_from_file()
+# transitions = PN.get_available_transitions()
+#
+# while transitions is not None:
+#     vector = PN.select_transition(transitions)
+#     if vector is not None:
+#         print(PN.trigger_transition(vector))
+#         del transitions
+#         del vector
+#         transitions = PN.get_available_transitions()
+#     else:
+#         transitions = None
