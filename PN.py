@@ -1,4 +1,8 @@
 import numpy as np
+from Node import Node
+import queue
+from graphviz import Digraph
+
 
 class PN:
     pre = None  # The pre Matrix
@@ -14,7 +18,6 @@ class PN:
         self.post = np.mat(data[2])
         self.A = self.post - self.pre
         f.close()
-
 
     def get_available_transitions(self):
         t = list()
@@ -59,14 +62,86 @@ class PN:
 
 PN = PN()
 PN.set_from_file()
-transitions = PN.get_available_transitions()
 
-while transitions is not None:
-    vector = PN.select_transition(transitions)
-    if vector is not None:
-        print(PN.trigger_transition(vector))
-        del transitions
-        del vector
-        transitions = PN.get_available_transitions()
-    else:
-        transitions = None
+Node = Node(PN.M[0], PN.pre, PN.A)
+
+
+def is_node_in_pendent(node, queue):
+    while not queue.empty():
+        aux = queue.get()
+        aux = str(aux.marker.A1)
+        node_marker = str(node.marker.A1)
+        if node_marker == aux:
+            return True
+    return False
+
+
+def is_node_in_visited(node, visited):
+    for i in range(len(visited)):
+        node_marker = str(node.marker.A1)
+        visited_marker = str(visited[i].marker.A1)
+
+        if node_marker == visited_marker:
+            return True
+    return False
+
+
+def get_transition_from_vector(counter, vector):
+    for t, x in enumerate(vector):
+        if x == 1:
+            if counter == 0:
+                return t + 1
+            else:
+                counter -= 1
+
+def node_is_greater_to_visited(node, visited):
+    result = node.marker.transpose()
+    for elem in visited:
+        result = node.marker.transpose() - elem.marker.transpose()
+        if np.all((result == 0) | (result == 1)):
+            for i, x in enumerate(result):
+                if x == 1:
+                    result[i] = -1
+        print("COMPARE: ", result)
+    return result.transpose()
+
+
+dot = Digraph(comment='Reach Graph', strict=True)
+dot.attr(size='8,5')
+
+visited = list()
+pendent = queue.Queue()
+pendent.put(Node)
+while not pendent.empty():
+    aux = pendent.get()
+    aux.expand_node(PN.pre, PN.A)
+    visited.append(aux)
+
+    #aux.marker = node_is_greater_to_visited(aux, visited)
+
+    dot.node(str(aux.marker.A1), str(aux.marker.A1))
+
+    for i, child in enumerate(aux.childs):
+        if not is_node_in_visited(child, visited):
+            pendent.put(child)
+        dot.node(str(child.marker.A1), str(child.marker.A1))
+        dot.edge(str(aux.marker.A1), str(child.marker.A1),
+                 label='T' + str(get_transition_from_vector(i, aux.transitions)))
+
+dot.view()
+
+
+
+
+#
+# transitions = PN.get_available_transitions()
+#
+# while transitions is not None:
+#     vector = PN.select_transition(transitions)
+#     if vector is not None:
+#         print(PN.trigger_transition(vector))
+#         del transitions
+#         del vector
+#         transitions = PN.get_available_transitions()
+#     else:
+#         transitions = None
