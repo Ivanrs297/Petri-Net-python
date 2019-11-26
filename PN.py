@@ -2,6 +2,7 @@ import numpy as np
 from Node import Node
 import queue
 from graphviz import Digraph
+from tarjan import tarjan
 
 
 class PN:
@@ -9,6 +10,13 @@ class PN:
     post = None  # The post Matrix
     M = list()  # The list of marks, m[0] = initial mark
     A = None
+
+    # Properties
+    bounded = True
+    liveness = True
+    cyclic = True
+    triggered_t = list()
+    aux_tarjan = {}
 
     def set_from_file(self):
         f = open("data.txt", "r")
@@ -90,20 +98,28 @@ def get_transition_from_vector(counter, vector):
     for t, x in enumerate(vector):
         if x == 1:
             if counter == 0:
+                if t not in PN.triggered_t:
+                    PN.triggered_t.append(t)
                 return t + 1
             else:
                 counter -= 1
 
+
 def node_is_greater_to_visited(node, visited):
-    result = node.marker.transpose()
     for elem in visited:
         result = node.marker.transpose() - elem.marker.transpose()
-        if np.all((result == 0) | (result == 1)):
+        if np.all((result >= 0)):
             for i, x in enumerate(result):
                 if x == 1:
-                    result[i] = -1
-        print("COMPARE: ", result)
-    return result.transpose()
+                    node.marker[0, i] = 999
+    return node.marker
+
+
+def replace_w(marker):
+    marker = marker.replace('999', 'w')
+    if 'w' in marker:
+        PN.bounded = False
+    return marker
 
 
 dot = Digraph(comment='Reach Graph', strict=True)
@@ -114,25 +130,45 @@ pendent = queue.Queue()
 pendent.put(Node)
 while not pendent.empty():
     aux = pendent.get()
+
+    aux.marker = node_is_greater_to_visited(aux, visited)
     aux.expand_node(PN.pre, PN.A)
     visited.append(aux)
+    if len(aux.childs) == 0:
+        PN.liveness = False
 
-    #aux.marker = node_is_greater_to_visited(aux, visited)
+    dot.node(replace_w(str(aux.marker.A1)), replace_w(str(aux.marker.A1)))
 
-    dot.node(str(aux.marker.A1), str(aux.marker.A1))
+    child_marker = list()
 
     for i, child in enumerate(aux.childs):
         if not is_node_in_visited(child, visited):
             pendent.put(child)
-        dot.node(str(child.marker.A1), str(child.marker.A1))
-        dot.edge(str(aux.marker.A1), str(child.marker.A1),
+        child.marker = node_is_greater_to_visited(child, visited)
+        dot.node(replace_w(str(child.marker.A1)), replace_w(str(child.marker.A1)))
+        dot.edge(replace_w(str(aux.marker.A1)), replace_w(str(child.marker.A1)),
                  label='T' + str(get_transition_from_vector(i, aux.transitions)))
+
+        child_marker.append(replace_w(str(child.marker.A1)))
+
+    PN.aux_tarjan[replace_w(str(aux.marker.A1))] = child_marker
 
 dot.view()
 
+# Properties
+if PN.liveness and len(PN.triggered_t) == PN.pre.shape[1]:
+    print("Viva: ", True)
+else:
+    print("Viva: ", False)
 
+print("Acotada: ", PN.bounded)
 
+tarjan = tarjan(PN.aux_tarjan)
 
+if len(tarjan) == 1:
+    print("Reversible/Cíclica: ", True)
+else:
+    print("Reversible/Cíclica: ", False)
 #
 # transitions = PN.get_available_transitions()
 #
