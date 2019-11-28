@@ -4,6 +4,21 @@ import queue
 from graphviz import Digraph
 from tarjan import tarjan
 
+class Vertex_Edge:
+    vertex = None
+    edge = None
+    target = list()
+
+    def __init__(self,vertex, edge):
+        self.edge = edge
+        self.vertex = vertex
+
+    def __eq__(self, other):
+        if other.vertex == self.vertex and other.edge == self.edge:
+            return True
+        else:
+            return False
+
 
 class PN:
     pre = None  # The pre Matrix
@@ -68,10 +83,7 @@ class PN:
         print("Marcado:", np.transpose(mk))
 
 
-PN = PN()
-PN.set_from_file()
 
-Node = Node(PN.M[0], PN.pre, PN.A)
 
 
 def is_node_in_pendent(node, queue):
@@ -100,9 +112,11 @@ def get_transition_from_vector(counter, vector):
             if counter == 0:
                 if t not in PN.triggered_t:
                     PN.triggered_t.append(t)
-                return t + 1
+                transition = t + 1
+                return transition
             else:
                 counter -= 1
+    return False
 
 
 def node_is_greater_to_visited(node, visited):
@@ -116,22 +130,45 @@ def node_is_greater_to_visited(node, visited):
 
 
 def replace_w(marker):
+    marker = str(marker)
+    marker = marker.replace(']', '')
+    marker = marker.replace('[', '')
+    marker = marker.split()
+    #marker = marker.replace(' ', '')
+
+    for i, x in enumerate(marker):
+        if int(x) >= 999:
+            marker[i] = 999
+
+    marker = str(marker)
     marker = marker.replace('999', 'w')
+
     if 'w' in marker:
         PN.bounded = False
     return marker
 
+PN = PN()
+PN.set_from_file()
+
+Node1 = Node(PN.M[0], PN.pre, PN.A)
+Node1.expand_node(PN.pre, PN.A)
 
 dot = Digraph(comment='Reach Graph', strict=True)
 dot.attr(size='8,5')
 
+vertex_list = list()
+root_vertex = Vertex_Edge(str(Node1.marker.A1), 0)
+root_vertex.target = Node1.transitions
+vertex_list.append(root_vertex)
+
+
 visited = list()
 pendent = queue.Queue()
-pendent.put(Node)
+pendent.put(Node1)
 while not pendent.empty():
     aux = pendent.get()
 
-    aux.marker = node_is_greater_to_visited(aux, visited)
+    #aux.marker = node_is_greater_to_visited(aux, visited)
     aux.expand_node(PN.pre, PN.A)
     visited.append(aux)
     if len(aux.childs) == 0:
@@ -139,36 +176,79 @@ while not pendent.empty():
 
     dot.node(replace_w(str(aux.marker.A1)), replace_w(str(aux.marker.A1)))
 
+    # list to Tarjan
     child_marker = list()
 
-    for i, child in enumerate(aux.childs):
-        if not is_node_in_visited(child, visited):
+    t_counter = 0
+    for child in aux.childs:
+        if not is_node_in_visited(child, visited) :
             pendent.put(child)
-        child.marker = node_is_greater_to_visited(child, visited)
-        dot.node(replace_w(str(child.marker.A1)), replace_w(str(child.marker.A1)))
-        dot.edge(replace_w(str(aux.marker.A1)), replace_w(str(child.marker.A1)),
-                 label='T' + str(get_transition_from_vector(i, aux.transitions)))
+        #child.marker = node_is_greater_to_visited(child, visited)
+        dot.node(replace_w(child.marker.A1), replace_w(child.marker.A1))
+        if get_transition_from_vector(t_counter, aux.transitions):
+            dot.edge(replace_w(aux.marker.A1), replace_w(child.marker.A1),
+                     label='T' + str(get_transition_from_vector(t_counter, aux.transitions)))
 
-        child_marker.append(replace_w(str(child.marker.A1)))
+
+        child_marker.append(replace_w(str(child.marker.A1))) # list to Tarjan
+
+        vertex_edge_temp = Vertex_Edge(str(child.marker.A1), get_transition_from_vector(t_counter, aux.transitions))
+        vertex_edge_temp.target = child.transitions
+        if vertex_edge_temp not in vertex_list:
+            vertex_list.append(vertex_edge_temp)
+        t_counter += 1
 
     PN.aux_tarjan[replace_w(str(aux.marker.A1))] = child_marker
 
 dot.view()
 
-# Properties
-if PN.liveness and len(PN.triggered_t) == PN.pre.shape[1]:
+#
+# # Properties
+tarjan = tarjan(PN.aux_tarjan)
+
+has_all_transitions = False
+for component in tarjan:
+    transition_list = list()
+    target_trans = list()
+    # transition_list.clear()
+    for marker in component:
+        for vertex_edge in vertex_list:
+            if marker == replace_w(str(vertex_edge.vertex)):
+                transition_list.append(vertex_edge.edge)
+                for i, t in enumerate(vertex_edge.target):
+                    if t == 1:
+                        transition = i + 1
+                        target_trans.append(transition)
+
+    sources = set(transition_list)
+    targets = set(target_trans)
+    if sources.__contains__(0):
+        sources.remove(0)
+    if targets.__contains__(0):
+        targets.remove(0)
+    print("SRCS: ", sources)
+    print("TRGTS: ", targets)
+    if sources == targets and len(sources) == PN.pre.shape[1]:
+        has_all_transitions = True
+
+
+
+
+
+if PN.liveness and has_all_transitions:
     print("Viva: ", True)
 else:
     print("Viva: ", False)
 
 print("Acotada: ", PN.bounded)
 
-tarjan = tarjan(PN.aux_tarjan)
-
 if len(tarjan) == 1:
     print("Reversible/Cíclica: ", True)
 else:
     print("Reversible/Cíclica: ", False)
+
+
+
 #
 # transitions = PN.get_available_transitions()
 #

@@ -1,7 +1,5 @@
 from Node import Node
+import math
 
 
-Node = Node()
-transitions_vector = [0] * 5
-
-print("T: ", transitions_vector)
+print("Infinity: ", math.inf - math.inf)
