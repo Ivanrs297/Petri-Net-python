@@ -83,9 +83,6 @@ class PN:
         print("Marcado:", np.transpose(mk))
 
 
-
-
-
 def is_node_in_pendent(node, queue):
     while not queue.empty():
         aux = queue.get()
@@ -226,8 +223,6 @@ for component in tarjan:
         sources.remove(0)
     if targets.__contains__(0):
         targets.remove(0)
-    print("SRCS: ", sources)
-    print("TRGTS: ", targets)
     if sources == targets and len(sources) == PN.pre.shape[1]:
         has_all_transitions = True
 
@@ -248,16 +243,3 @@ else:
     print("Reversible/Cíclica: ", False)
 
 
-
-#
-# transitions = PN.get_available_transitions()
-#
-# while transitions is not None:
-#     vector = PN.select_transition(transitions)
-#     if vector is not None:
-#         print(PN.trigger_transition(vector))
-#         del transitions
-#         del vector
-#         transitions = PN.get_available_transitions()
-#     else:
-#         transitions = None
